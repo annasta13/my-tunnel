@@ -74,9 +74,11 @@ certbot certonly --manual --preferred-challenges dns -d "*.tunnel.yourdomain.com
 ### 4. Run Client (Laptop)
 
 ```bash
-mytunnel-client -server wss://tunnel.yourdomain.com -token YOUR_SECRET -ui :9000
+mytunnel-client -server wss://tunnel.hanayuvi.com -token YOUR_SECRET -ui :9000
 ```
 
+token: SfGAUgb4qP7RLD1Zg6afDujZ9igXAqaLPfe7UYgu0Yq9PQkLkVFEpqpM1xLtuBCA
+pm2 start ./mytunnel-server --name mytunnel -- -domain tunnel.domainmu.com -SfGAUgb4qP7RLD1Zg6afDujZ9igXAqaLPfe7UYgu0Yq9PQkLkVFEpqpM1xLtuBCA YOUR_SECRET -addr :7891
 Open http://localhost:9000 to manage tunnels.
 
 ## Usage (Dashboard)

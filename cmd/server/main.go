@@ -148,6 +148,10 @@ func (t *tunnel) readLoop() {
 			t.pendingMu.Unlock()
 		case protocol.TypePong:
 			// keepalive response, ignore
+		case protocol.TypePing:
+			t.mu.Lock()
+			t.conn.WriteJSON(protocol.TunnelMessage{Type: protocol.TypePong})
+			t.mu.Unlock()
 		}
 	}
 }

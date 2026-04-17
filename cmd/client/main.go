@@ -222,6 +222,28 @@ func connectTunnel(entry *TunnelEntry) {
 
 	log.Printf("[%s] Connected → %s", entry.Subdomain, resp.Message)
 
+	// Start keepalive ping (prevents Cloudflare 100s idle timeout)
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				entry.mu.Lock()
+				c := entry.conn
+				entry.mu.Unlock()
+				if c == nil {
+					return
+				}
+				entry.mu.Lock()
+				c.WriteJSON(protocol.TunnelMessage{Type: protocol.TypePing})
+				entry.mu.Unlock()
+			case <-entry.stopCh:
+				return
+			}
+		}
+	}()
+
 	// Handle incoming requests from server
 	for {
 		var msg protocol.TunnelMessage
