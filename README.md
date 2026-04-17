@@ -1,34 +1,40 @@
 # MyTunnel — Self-hosted ngrok alternative
 
 Expose localhost services via your own VPS and domain, with a web dashboard to manage tunnels.
+Built with Go. Supports Cloudflare proxy with WebSocket keepalive.
 
 ## Architecture
 
 ```
-Internet → odoo.tunnel.yourdomain.com → [VPS Server :7891]
-                                            ↕ WebSocket
-                                         [Client on laptop]
-                                            ↕
-                                         localhost:8069
+Internet → odoo.tunnel.yourdomain.com → [Cloudflare] → [Nginx :80] → [Server :7891]
+                                                                           ↕ WebSocket
+                                                                        [Client on laptop]
+                                                                           ↕
+                                                                        localhost:8069
 
 Dashboard: http://localhost:9000
 ```
 
 ## Setup
 
-### 1. DNS (Domain Provider)
+### 1. DNS (Cloudflare)
 
-Add a wildcard A record pointing to your VPS:
+Add a wildcard A record:
 
 ```
-*.tunnel.yourdomain.com  →  YOUR_VPS_IP
+Type: A
+Name: *.tunnel
+Value: YOUR_VPS_IP
+Proxy: ON (orange cloud)
 ```
+
+Set SSL/TLS mode to **Flexible** in Cloudflare dashboard.
 
 ### 2. Build
 
 ```bash
-# Server binary (for VPS)
-GOOS=linux GOARCH=amd64 go build -o mytunnel-server ./cmd/server
+# Server binary (for Linux VPS)
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o mytunnel-server ./cmd/server
 
 # Client binary (for your laptop)
 go build -o mytunnel-client ./cmd/client
@@ -36,24 +42,13 @@ go build -o mytunnel-client ./cmd/client
 
 ### 3. Deploy Server (VPS)
 
-```bash
-# Copy binary to VPS
-scp mytunnel-server user@your-vps:/usr/local/bin/
-
-# Run (use systemd for production)
-mytunnel-server -domain tunnel.yourdomain.com -token YOUR_SECRET -addr :7891
-```
-
-For HTTPS, put Nginx/Caddy in front:
+#### Nginx config
 
 ```nginx
 # /etc/nginx/sites-enabled/tunnel
 server {
-    listen 443 ssl;
+    listen 80;
     server_name *.tunnel.yourdomain.com;
-
-    ssl_certificate     /etc/letsencrypt/live/tunnel.yourdomain.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/tunnel.yourdomain.com/privkey.pem;
 
     location / {
         proxy_pass http://127.0.0.1:7891;
@@ -62,23 +57,43 @@ server {
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_read_timeout 86400;
     }
 }
 ```
 
-Wildcard SSL with certbot:
+#### Run with pm2
+
 ```bash
-certbot certonly --manual --preferred-challenges dns -d "*.tunnel.yourdomain.com"
+pm2 start ./mytunnel-server --name mytunnel -- -domain yourdomain.com -token YOUR_SECRET -addr :7891
+```
+
+Or use an ecosystem file:
+
+```js
+// ecosystem.config.js
+module.exports = {
+  apps: [{
+    name: "mytunnel",
+    script: "./mytunnel-server",
+    args: "-domain yourdomain.com -token YOUR_SECRET -addr :7891",
+    cwd: "/path/to/app"
+  }]
+}
+```
+
+```bash
+pm2 start ecosystem.config.js
+pm2 save && pm2 startup
 ```
 
 ### 4. Run Client (Laptop)
 
 ```bash
-mytunnel-client -server wss://tunnel.hanayuvi.com -token YOUR_SECRET -ui :9000
+./mytunnel-client -server wss://tunnel.yourdomain.com -token YOUR_SECRET -ui :9000
 ```
 
-token: SfGAUgb4qP7RLD1Zg6afDujZ9igXAqaLPfe7UYgu0Yq9PQkLkVFEpqpM1xLtuBCA
-pm2 start ./mytunnel-server --name mytunnel -- -domain tunnel.domainmu.com -SfGAUgb4qP7RLD1Zg6afDujZ9igXAqaLPfe7UYgu0Yq9PQkLkVFEpqpM1xLtuBCA YOUR_SECRET -addr :7891
 Open http://localhost:9000 to manage tunnels.
 
 ## Usage (Dashboard)
@@ -104,3 +119,9 @@ Open http://localhost:9000 to manage tunnels.
 | `-server` | `ws://tunnel.example.com:7891` | Server WebSocket URL |
 | `-token` | `changeme` | Auth token |
 | `-ui` | `:9000` | Dashboard address |
+
+## Notes
+
+- Ping/pong keepalive runs every 30s to prevent Cloudflare idle timeout (~100s)
+- Tunnels auto-reconnect on disconnect
+- Token is shared secret between server and client — use a strong random string
