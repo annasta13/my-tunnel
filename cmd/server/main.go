@@ -40,7 +40,7 @@ var (
 func main() {
 	flag.StringVar(&baseDomain, "domain", "tunnel.example.com", "Base domain for tunnels")
 	flag.StringVar(&authToken, "token", "changeme", "Auth token for client connections")
-	addr := flag.String("addr", ":8080", "Listen address")
+	addr := flag.String("addr", ":7891", "Listen address")
 	flag.Parse()
 
 	http.HandleFunc("/", handleRequest)

@@ -5,7 +5,7 @@ Expose localhost services via your own VPS and domain, with a web dashboard to m
 ## Architecture
 
 ```
-Internet → odoo.tunnel.yourdomain.com → [VPS Server :8080]
+Internet → odoo.tunnel.yourdomain.com → [VPS Server :7891]
                                             ↕ WebSocket
                                          [Client on laptop]
                                             ↕
@@ -41,7 +41,7 @@ go build -o mytunnel-client ./cmd/client
 scp mytunnel-server user@your-vps:/usr/local/bin/
 
 # Run (use systemd for production)
-mytunnel-server -domain tunnel.yourdomain.com -token YOUR_SECRET -addr :8080
+mytunnel-server -domain tunnel.yourdomain.com -token YOUR_SECRET -addr :7891
 ```
 
 For HTTPS, put Nginx/Caddy in front:
@@ -56,7 +56,7 @@ server {
     ssl_certificate_key /etc/letsencrypt/live/tunnel.yourdomain.com/privkey.pem;
 
     location / {
-        proxy_pass http://127.0.0.1:8080;
+        proxy_pass http://127.0.0.1:7891;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -94,11 +94,11 @@ Open http://localhost:9000 to manage tunnels.
 |------|---------|-------------|
 | `-domain` | `tunnel.example.com` | Base domain |
 | `-token` | `changeme` | Auth token |
-| `-addr` | `:8080` | Listen address |
+| `-addr` | `:7891` | Listen address |
 
 ### Client
 | Flag | Default | Description |
 |------|---------|-------------|
-| `-server` | `ws://tunnel.example.com:8080` | Server WebSocket URL |
+| `-server` | `ws://tunnel.example.com:7891` | Server WebSocket URL |
 | `-token` | `changeme` | Auth token |
 | `-ui` | `:9000` | Dashboard address |

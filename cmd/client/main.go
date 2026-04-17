@@ -38,7 +38,7 @@ var (
 )
 
 func main() {
-	flag.StringVar(&serverURL, "server", "ws://tunnel.example.com:8080", "Tunnel server WebSocket URL")
+	flag.StringVar(&serverURL, "server", "ws://tunnel.example.com:7891", "Tunnel server WebSocket URL")
 	flag.StringVar(&authToken, "token", "changeme", "Auth token")
 	uiAddr := flag.String("ui", ":9000", "UI dashboard listen address")
 	flag.Parse()
